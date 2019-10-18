@@ -1,0 +1,12 @@
+[
+    {
+        "name" : "Riasat",
+        "email" : "riasat@gmail.com",
+        "password": "1234"
+    },
+    {
+        "name" : "Mufrat",
+        "email" : "mufrat@gmail.com",
+        "password": "1234"
+    }
+]
