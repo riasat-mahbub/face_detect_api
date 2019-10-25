@@ -1,5 +1,5 @@
 //global variables
-let g_signed_in_user = null;
+let g_signed_in_users = [];
 
 //data
 const data = {
@@ -44,65 +44,61 @@ app.use(bodyParser.json());
 const cors = require('cors');
 app.use(cors());
 
-//get all users(default begaviour)
-app.get('/', (req, res) =>{
+//get all users(default behaviour(REDACTED test function)
+/*app.get('/', (req, res) =>{
     res.json(g_signed_in_user);
-})
+})*/
 
 //sign in func
 app.post("/signin", (req, res) =>{
 
-    if (g_signed_in_user != null) {
-        return res.status(400).json("ALREADY SIGNED IN");
-    }
-
     const {email, password} = req.body;
-    
-    data.users.forEach( (item) =>{
+    let signinSuccess = false;
+    let currentUserPos = null;
+
+    data.users.forEach( (item,pos) =>{
         if(item.email === email){
-            const same = bcrypt.compareSync(password,item.password);
-            if (same) {
+            signinSuccess = bcrypt.compareSync(password,item.password);
+            if (signinSuccess) {
                 item.signed_in = true;
-                g_signed_in_user = item;
+                g_signed_in_users.push(item);
+                currentUserPos = pos;
             }
         }
     })
 
-    if(g_signed_in_user != null){
-        res.status(200).json(g_signed_in_user)
+    if(signinSuccess){
+        let currentUser = {
+            email: data.users[currentUserPos].email,
+            score: data.users[currentUserPos].score,
+            username: data.users[currentUserPos].username
+        }
+        res.status(200).json(currentUser);
     }else{
-        res.status(400).json("SIGN IN ERROR");
+        res.status(400).json("CANNOT SIGN IN");
     }
 })
 
 
 //sign out func
-app.post("/signout", (req, res) => {
+app.post("/signout/:email", (req, res) => {
 
-    if (g_signed_in_user == null) {
-        return res.status(400).json("ALREADY SIGNED OUT")
-    }
+    const {email} = req.params;
 
     data.users.forEach((item) => {
-        if (item.email === g_signed_in_user.email) {
+        if (item.email === email) {
+            g_signed_in_users.filter( (obj) => {
+                obj === item;
+            })
             item.signed_in = false;
-            g_signed_in_user = null;
         }
     })
 
-    if (g_signed_in_user == null) {
-        res.status(200).json("SIGNED OUT")
-    } else {
-        res.status(400).json("SIGN OUT ERROR");
-    }
+    res.status(200).json("SIGNED OUT");
 })
 
 //register func
 app.post("/register", (req, res) => {
-
-    if(g_signed_in_user != null){
-        return res.status(400).json("ALREADY SIGNED IN");
-    }
 
     let already_registered = false;
 
@@ -126,31 +122,15 @@ app.post("/register", (req, res) => {
             score: 0
         }
 
+        let new_mock_user = {
+            email: new_user.email,
+            username: new_user.username,
+            score: new_user.score
+        }
+
         data.users.push(new_user);
 
-        g_signed_in_user = new_user;
-        g_signed_in_user.signed_in = true;
-
-        res.status(200).json(g_signed_in_user);
-    }
-})
-
-//profile find function
-app.get("/:email", (req, res) => {
-
-    const {email} = req.params;
-    let matching_user = null;
-
-    data.users.forEach((item) => {
-        if (item.email === email) {
-            matching_user = item;
-        }
-    })
-
-    if (matching_user != null) {
-        res.status(200).json(matching_user)
-    } else {
-        res.status(400).json("CANT FIND USER");
+        res.status(200).json(new_mock_user);
     }
 })
 
@@ -159,17 +139,17 @@ app.get("/:email", (req, res) => {
 app.put("/:email", (req, res) => {
 
     const { email } = req.params;
-    let updated_score = false;
+    let updated_score = 0;
 
     data.users.forEach((item) => {
         if (item.email === email) {
-            ++(item.score);
-            updated_score = true;
+            item.score++;
+            updated_score = item.score;
         }
     })
 
-    if(updated_score){
-        res.status(200).json("SCORE UPDATED");
+    if(updated_score !== 0){
+        res.status(200).json(updated_score);
     }else{
         res.status(400).json("SCORE UPDATE FAILED");
     }
