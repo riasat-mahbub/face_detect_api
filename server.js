@@ -1,6 +1,20 @@
 //global variables
 let g_signed_in_users = [];
 
+//knex
+const knex = require('knex');
+
+const pg = knex({
+    client: 'pg',
+    connection: {
+        host: '127.0.0.1',
+        user: 'postgres',
+        password: '',
+        database: 'face_detect'
+    }
+});
+
+
 //data
 const data = {
     users:[
@@ -53,85 +67,84 @@ app.use(cors());
 app.post("/signin", (req, res) =>{
 
     const {email, password} = req.body;
-    let signinSuccess = false;
-    let currentUserPos = null;
 
-    data.users.forEach( (item,pos) =>{
-        if(item.email === email){
-            signinSuccess = bcrypt.compareSync(password,item.password);
-            if (signinSuccess) {
-                item.signed_in = true;
-                g_signed_in_users.push(item);
-                currentUserPos = pos;
+    pg
+    .select('*').from('signin').where({
+        email: email
+    })
+    .then( (signinUsers) => {
+
+        if(signinUsers.length > 0){
+
+            let signinSuccess = bcrypt.compareSync(password, signinUsers[0].hash);
+
+            if(signinSuccess){
+
+                pg
+                .select('*').from('users').where({
+                    id: signinUsers[0].id
+                })
+                .then( (registeredUsers) => {
+
+                    let signedInUser = {
+                        name: registeredUsers[0].name,
+                        email: registeredUsers[0].email,
+                        score: registeredUsers[0].score
+                    }
+
+                    res.status(200).json(signedInUser);
+                })
             }
+        }else{
+            res.status(400).json("CANNOT SIGN IN")
         }
     })
 
-    if(signinSuccess){
-        let currentUser = {
-            email: data.users[currentUserPos].email,
-            score: data.users[currentUserPos].score,
-            username: data.users[currentUserPos].username
-        }
-        res.status(200).json(currentUser);
-    }else{
-        res.status(400).json("CANNOT SIGN IN");
-    }
 })
 
-
-//sign out func
-app.post("/signout/:email", (req, res) => {
-
-    const {email} = req.params;
-
-    data.users.forEach((item) => {
-        if (item.email === email) {
-            g_signed_in_users.filter( (obj) => {
-                obj === item;
-            })
-            item.signed_in = false;
-        }
-    })
-
-    res.status(200).json("SIGNED OUT");
-})
 
 //register func
 app.post("/register", (req, res) => {
 
-    let already_registered = false;
 
-    const { username, email, password } = req.body;
+    const { name, email, password } = req.body;
     let hash_password = bcrypt.hashSync(password, hashStr);
+    
+    let new_user = {
+        name: name,
+        email : email,
+        joined: new Date()
+    }
 
-    data.users.forEach((item) => {
-        if (item.email === email) {
-            already_registered = true;
+    pg('users')
+    .insert(new_user)
+    .then( () =>{
+
+
+        //set login credentials
+        let login_user = {
+            email: new_user.email,
+            hash: hash_password
         }
-    })
 
-    if(already_registered){
-        res.status(400).json("USER ALREADY REGISTERED");
-    }else{
-        let new_user = {
-            username: username,
-            email : email,
-            password: hash_password,
-            signed_in: false,
+        pg('signin')
+            .insert(login_user)
+            .then( );
+
+        //send a mock user to the frontend
+        let mock_user = {
+            email: new_user.email,
+            name: new_user.name,
             score: 0
         }
 
-        let new_mock_user = {
-            email: new_user.email,
-            username: new_user.username,
-            score: new_user.score
-        }
+        res.status(200).json(mock_user);
 
-        data.users.push(new_user);
+    })
+    .catch( (err) =>{
+        res.status(400).json("REGISTRATION ERROR")
+    });
 
-        res.status(200).json(new_mock_user);
-    }
 })
 
 
@@ -139,20 +152,18 @@ app.post("/register", (req, res) => {
 app.put("/:email", (req, res) => {
 
     const { email } = req.params;
-    let updated_score = 0;
 
-    data.users.forEach((item) => {
-        if (item.email === email) {
-            item.score++;
-            updated_score = item.score;
-        }
+    pg('users')
+    .where('email', '=', email)
+    .increment('score', 1)
+    .returning('score')
+    .then( (scores) =>{
+        res.status(200).json(scores[0]);
     })
-
-    if(updated_score !== 0){
-        res.status(200).json(updated_score);
-    }else{
-        res.status(400).json("SCORE UPDATE FAILED");
-    }
+    .catch( (err) => {
+        console.log(email);
+        res.status(400).json("UPDATE FAILED")
+    })
 })
 
 app.listen(3000);
