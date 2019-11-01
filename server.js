@@ -14,34 +14,6 @@ const pg = knex({
     }
 });
 
-
-//data
-const data = {
-    users:[
-        {
-            username: "Riasat",
-            email: "riasat@gmail.com",
-            password: "$2b$10$j7vPO/irpOSFCyks9GgA/.R0isuwNKLuTsSdDjji2EZSHDELCh8yO",
-            signed_in: false,
-            score: 0
-        },
-        {
-            username: "Mufrat",
-            email: "mufrat@gmail.com",
-            password: "$2b$10$j7vPO/irpOSFCyks9GgA/.R0isuwNKLuTsSdDjji2EZSHDELCh8yO",
-            signed_in: false,
-            score: 0
-        },
-        {
-            username: "a",
-            email: "a@a",
-            password: "$2b$10$j7vPO/irpOSFCyks9GgA/.R0isuwNKLuTsSdDjji2EZSHDELCh8yO",
-            signed_in: false,
-            score: 0
-        }
-    ] 
-}
-
 //bcrypt
 const bcrypt = require('bcrypt');
 const hashStr = 10;
@@ -68,6 +40,10 @@ app.post("/signin", (req, res) =>{
 
     const {email, password} = req.body;
 
+    if(email === null || password === null){
+        res.json("Empty Email or password");
+    }
+
     pg
     .select('*').from('signin').where({
         email: email
@@ -75,17 +51,14 @@ app.post("/signin", (req, res) =>{
     .then( (signinUsers) => {
 
         if(signinUsers.length > 0){
-
             let signinSuccess = bcrypt.compareSync(password, signinUsers[0].hash);
-
+        
             if(signinSuccess){
-
                 pg
                 .select('*').from('users').where({
                     id: signinUsers[0].id
                 })
                 .then( (registeredUsers) => {
-
                     let signedInUser = {
                         name: registeredUsers[0].name,
                         email: registeredUsers[0].email,
@@ -106,15 +79,19 @@ app.post("/signin", (req, res) =>{
 //register func
 app.post("/register", (req, res) => {
 
-
     const { name, email, password } = req.body;
     let hash_password = bcrypt.hashSync(password, hashStr);
     
+    if (email === null || password === null) {
+        res.json("Empty Email or password");
+    }
+
     let new_user = {
         name: name,
         email : email,
         joined: new Date()
     }
+
 
     pg('users')
     .insert(new_user)
@@ -139,7 +116,6 @@ app.post("/register", (req, res) => {
         }
 
         res.status(200).json(mock_user);
-
     })
     .catch( (err) =>{
         res.status(400).json("REGISTRATION ERROR")
@@ -161,9 +137,10 @@ app.put("/:email", (req, res) => {
         res.status(200).json(scores[0]);
     })
     .catch( (err) => {
-        console.log(email);
         res.status(400).json("UPDATE FAILED")
     })
 })
 
+//port
+const PORT = process.env.PORT;
 app.listen(3000);
