@@ -30,11 +30,10 @@ app.use(bodyParser.json());
 const cors = require('cors');
 app.use(cors());
 
-//get all users(default behaviour(REDACTED test function)
-/*app.get('/', (req, res) =>{
-    res.json(g_signed_in_user);
-})*/
-
+//get all users(default behaviour)
+app.get('/', (req, res) =>{
+    res.json("server is working");
+}
 //sign in func
 app.post("/signin", (req, res) =>{
 
