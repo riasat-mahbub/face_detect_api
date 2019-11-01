@@ -33,7 +33,7 @@ app.use(cors());
 //get all users(default behaviour)
 app.get('/', (req, res) =>{
     res.json("server is working");
-}
+})
 //sign in func
 app.post("/signin", (req, res) =>{
 
