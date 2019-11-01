@@ -143,4 +143,4 @@ app.put("/:email", (req, res) => {
 
 //port
 const PORT = process.env.PORT;
-app.listen(3000);
+app.listen(PORT|| 3000);
